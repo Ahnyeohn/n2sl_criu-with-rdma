@@ -293,6 +293,20 @@ int setup_tcp_server(char *type, char *addr, unsigned short *port);
 int run_tcp_server(bool daemon_mode, int *ask, int cfd, int sk);
 int setup_tcp_client(char *hostname);
 
+static int on_connect_request(struct rdma_cm_id *id, struct rdma_conn_param *param);
+static int on_connection(struct queue *q);
+static int on_disconnect(struct queue *q);
+static int on_event(struct rdma_cm_event *event);
+int start_rdma_server(struct sockaddr_in s_addr);
+
+static int on_addr_resolved(struct rdma_cm_id *id);
+static int on_route_resolved(struct queue *q);
+static int on_connection(struct queue *q);
+static int on_disconnect(struct queue *q);
+static int on_event_client(struct rdma_cm_event *event);
+int start_rdma_client(struct sockaddr_in *s_addr);
+int disconnect_rdma_client(void);
+
 /* path should be writable and no more than PATH_MAX long */
 int rmrf(char *path);
 

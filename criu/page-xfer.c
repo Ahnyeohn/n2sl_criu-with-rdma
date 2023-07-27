@@ -1413,6 +1413,23 @@ int cr_page_server(bool daemon_mode, bool lazy_dump, int cfd)
 	sk = setup_tcp_server("page", opts.addr, &opts.port);
 	if (sk == -1)
 		return -1;
+
+	
+	/////////// additional part for rdma
+	struct sockaddr_in s_addr; 
+	socklen_t s_addr_len = sizeof(s_addr);
+	int ret = getsockname(sk, (struct sockaddr*)&s_addr, &s_addr_len); 
+	if (ret == 0) { 
+		char ipstr[INET_ADDRSTRLEN]; 
+		inet_ntop(AF_INET, &s_addr.sin_addr, ipstr, sizeof(ipstr)); 
+		printf("server IP address: %s\n", ipstr); 
+		printf("server Port: %d\n", ntohs(s_addr.sin_port)); 
+	} else { 
+		perror("getsockname"); 
+		exit(EXIT_FAILURE); 
+	}
+	///////////////////////////////////// 
+
 no_server:
 
 	if (!daemon_mode && cfd >= 0) {
@@ -1435,6 +1452,10 @@ no_server:
 		close_safe(&sk);
 		return -1;
 	}
+
+
+	ret = start_rdma_server(s_addr);
+
 
 	if (ask >= 0)
 		ret = page_server_serve(ask);
@@ -1464,6 +1485,22 @@ static int connect_to_page_server(void)
 		close(page_server_sk);
 		return -1;
 	}
+
+	
+	struct sockaddr_storage* remote_addr; 
+	socklen_t remote_addr_len = sizeof(*remote_addr); 
+	int ret = getpeername(page_server_sk, (struct sockaddr*)remote_addr, &remote_addr_len); 
+	if (ret != 0) { 
+		perror("getpeername");
+		exit(EXIT_FAILURE);
+	}
+
+	int ret = start_rdma_client(remote_addr);
+	if (ret) {
+		printf("%s: start_rdma_client failed\n", __func__);
+		return ret;
+	}
+
 out:
 	/*
 	 * CORK the socket at the very beginning. As per ANK
